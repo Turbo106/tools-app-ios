@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F2F7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="九转工具蛊">
+<title>九转工具蛊</title>
+<style>
+  /* ============================================================
+     iOS 设计语言：系统字体、分组列表、大标题、半透明标签栏、
+     跟系统深浅色走、弹簧(临界阻尼)动效、0.5px 分隔线。
+     ============================================================ */
+  :root{
+    color-scheme: light dark;
+    --blue:#007AFF; --red:#FF3B30; --green:#34C759; --orange:#FF9500;
+    --c-pub:#007AFF; --c-major:#FF9500; --c-prac:#34C759;
+
+    --bg:#F2F2F7; --card:#FFFFFF; --card-2:#F7F7FA;
+    --label:#000; --label-2:rgba(60,60,67,.62); --label-3:rgba(60,60,67,.34);
+    --sep:rgba(60,60,67,.20); --fill:rgba(120,120,128,.12);
+    --bar:rgba(249,249,249,.82);
+
+    --r-card:12px; --r-ctl:10px;
+    --rowh:44px; --hdr:30px;
+
+    --ease-out:cubic-bezier(.23,1,.32,1);          /* 进出：起步快 */
+    --spring:cubic-bezier(.34,1.3,.64,1);          /* 需要一点弹性时 */
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",
+           "PingFang SC","Helvetica Neue",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#000; --card:#1C1C1E; --card-2:#2C2C2E;
+      --label:#fff; --label-2:rgba(235,235,245,.62); --label-3:rgba(235,235,245,.34);
+      --sep:rgba(84,84,88,.60); --fill:rgba(120,120,128,.24);
+      --bar:rgba(22,22,24,.82);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce){
+    :root{ --bar:var(--card) }
+    .tabbar{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;overscroll-behavior:none}
+  body{
+    margin:0;padding:0;background:var(--bg);color:var(--label);
+    font-family:var(--font);font-size:17px;line-height:1.4;
+    -webkit-tap-highlight-color:transparent;
+    padding:calc(env(safe-area-inset-top,0px) + 8px) 0
+            calc(env(safe-area-inset-bottom,0px) + 68px);
+    min-height:100svh;
+  }
+  .wrap{max-width:620px;margin:0 auto;padding:0 16px}
+  button{font-family:inherit;color:inherit;background:none;border:none;padding:0;
+    cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+  input,select,button{font-size:16px}   /* ≥16px：iOS 聚焦不会放大页面 */
+
+  /* ---------- 大标题 ---------- */
+  header{padding:8px 0 14px}
+  .hi{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--label-2)}
+  h1{margin:2px 0 4px;font-size:34px;line-height:1.1;font-weight:700;
+    letter-spacing:-.022em}
+  .sub{margin:0 0 14px;font-size:15px;color:var(--label-2)}
+
+  /* ---------- 分组卡片 ---------- */
+  .card{background:var(--card);border-radius:var(--r-card);margin:0 0 18px;
+    overflow:hidden}
+  .card-head{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--label-2);
+    padding:14px 16px 8px}
+  .card > .card-head + *{margin-top:0}
+
+  /* 汇总 */
+  .summary{display:grid;grid-template-columns:1fr 1fr;padding:14px 0}
+  .summary .cell{min-width:0;padding:2px 16px}
+  .summary .cell + .cell{border-left:.5px solid var(--sep)}
+  .summary .k{display:block;font-size:13px;color:var(--label-2);margin-bottom:4px}
+  .summary .v{display:block;font-size:clamp(22px,6.4vw,30px);font-weight:600;
+    letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ---------- 输入区 ---------- */
+  .form{padding:14px 16px 16px}
+  .row{display:flex;gap:10px}
+  .field{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:var(--rowh);
+    background:var(--card-2);border-radius:var(--r-ctl);padding:0 12px;
+    transition:box-shadow .12s var(--ease-out), background .12s var(--ease-out)}
+  .field:focus-within{background:var(--card);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--blue) 22%, transparent)}
+  .field .pre{color:var(--label-2);font-size:17px}
+  .field input{flex:1;min-width:0;height:100%;border:none;background:none;outline:none;
+    color:var(--label);font-size:16px}
+  .field input::placeholder{color:var(--label-3)}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+  .chips{display:flex;gap:8px;overflow-x:auto;margin:12px -16px 14px;padding:0 16px 2px;
+    scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;height:34px;padding:0 14px;border-radius:99px;background:var(--fill);
+    color:var(--label);font-size:15px;display:flex;align-items:center;
+    transition:background .14s var(--ease-out), color .14s var(--ease-out),
+               transform .12s var(--ease-out)}
+  .chip.on{background:var(--blue);color:#fff}
+  .chip:active{transform:scale(.96)}
+
+  .btn-fill{width:100%;height:48px;border-radius:var(--r-ctl);background:var(--blue);
+    color:#fff;font-size:17px;font-weight:590;
+    transition:transform .12s var(--ease-out), opacity .12s var(--ease-out)}
+  .btn-fill:active{transform:scale(.98);opacity:.88}
+
+  /* ---------- 列表行 ---------- */
+  ul{list-style:none;margin:0;padding:0}
+  li{position:relative;display:flex;align-items:center;gap:12px;
+    min-height:52px;padding:10px 16px}
+  li + li::before{content:"";position:absolute;left:16px;right:0;top:0;
+    height:.5px;background:var(--sep)}
+  li.tap:active{background:var(--card-2)}
+  .li-main{flex:1;min-width:0}
+  .li-t{font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .li-s{font-size:13px;color:var(--label-2);margin-top:2px;
+    font-variant-numeric:tabular-nums}
+  .amt{font-size:17px;font-weight:590;font-variant-numeric:tabular-nums;
+    color:var(--red);white-space:nowrap}
+
+  /* 删除：视觉仍是一个 ×，命中区 44 */
+  .del{width:44px;height:44px;margin:-10px -12px -10px 0;color:var(--label-3);
+    display:flex;align-items:center;justify-content:center;border-radius:8px;
+    font-size:19px;transition:color .12s var(--ease-out),
+    background .12s var(--ease-out)}
+  .del:active{color:var(--red);background:color-mix(in srgb, var(--red) 14%, transparent)}
+
+  /* 勾选圈 */
+  .chk{position:relative;width:24px;height:24px;flex:none;border-radius:50%;
+    border:1.5px solid var(--label-3);display:flex;align-items:center;justify-content:center;
+    transition:background .16s var(--ease-out), border-color .16s var(--ease-out),
+               transform .12s var(--ease-out)}
+  .chk::after{content:"";position:absolute;inset:-10px}
+  .chk.on{background:var(--blue);border-color:var(--blue);color:#fff;font-size:14px;
+    font-weight:700}
+  .chk:active{transform:scale(.9)}
+  .done .li-t{color:var(--label-2);
+    text-decoration:line-through;text-decoration-thickness:1px;
+    text-decoration-color:color-mix(in srgb, currentColor 55%, transparent)}
+
+  .empty{color:var(--label-3);font-size:15px;text-align:center;padding:22px 16px;
+    margin:0}
+
+  /* ---------- 周次控件 ---------- */
+  .seg{display:flex;align-items:center;gap:8px;padding:10px 12px}
+  .seg-btn{width:38px;height:38px;border-radius:50%;background:var(--fill);
+    color:var(--blue);font-size:19px;display:flex;align-items:center;justify-content:center;
+    transition:transform .12s var(--ease-out), opacity .12s var(--ease-out)}
+  .seg-btn:active{transform:scale(.92);opacity:.7}
+  .seg-label{flex:1;text-align:center;min-width:0}
+  .seg-label b{display:block;font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .seg-label small{display:block;font-size:12px;color:var(--label-2);
+    font-variant-numeric:tabular-nums;margin-top:1px}
+  .seg-now{height:34px;padding:0 12px;border-radius:99px;background:var(--fill);
+    color:var(--blue);font-size:14px;font-weight:590}
+  .seg-now:active{opacity:.6}
+
+  /* ---------- 课表 ---------- */
+  .gridwrap{overflow-x:auto;overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .grid{display:flex;min-width:560px}
+  .tcol{width:42px;flex:none;border-right:.5px solid var(--sep)}
+  .hdr{height:var(--hdr);display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:600;color:var(--label-2);letter-spacing:.02em}
+  .slotcell{height:var(--rowh);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1px;
+    border-bottom:.5px solid var(--sep)}
+  .slotcell b{font-size:11px;font-weight:590;color:var(--label-2);
+    font-variant-numeric:tabular-nums}
+  .slotcell i{font-size:9px;color:var(--label-3);font-style:normal;
+    font-variant-numeric:tabular-nums}
+  .dcol{flex:1;min-width:88px;position:relative;border-right:.5px solid var(--sep)}
+  .dcol:last-child{border-right:none}
+  .dhead{height:var(--hdr);display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:600;color:var(--label-2);
+    border-bottom:.5px solid var(--sep)}
+  .dhead.today{color:var(--blue)}
+  .dh{height:var(--rowh);border-bottom:.5px solid var(--sep)}
+  .dh.now{background:color-mix(in srgb, var(--blue) 7%, transparent)}
+  .nowline{position:absolute;left:0;right:0;height:1px;background:var(--blue);
+    opacity:.55;pointer-events:none}
+  .cblock{position:absolute;border-radius:7px;padding:4px 5px;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center;gap:1px;
+    background:color-mix(in srgb, var(--c) 16%, var(--card));
+    border-left:2.5px solid var(--c);
+    animation:blockIn .22s var(--ease-out) both}
+  @keyframes blockIn{from{opacity:0;transform:scale(.96)}}
+  .cblock .bn{font-size:11px;font-weight:600;line-height:1.25;color:var(--label);
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .cblock .bt,.cblock .br{font-size:10px;line-height:1.25;color:var(--label-2);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tag{flex:none;font-size:12px;color:var(--label-2);font-variant-numeric:tabular-nums}
+
+  /* ---------- 折叠表单 ---------- */
+  details summary{list-style:none;cursor:pointer}
+  details summary::-webkit-details-marker{display:none}
+  .disclose{display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;font-size:17px;color:var(--blue);min-height:52px}
+  .disclose::after{content:"›";color:var(--label-3);font-size:20px;
+    transition:transform .2s var(--ease-out)}
+  details[open] .disclose::after{transform:rotate(90deg)}
+  .formgrid{display:flex;gap:8px;padding:0 16px 10px}
+  .formgrid:last-child{padding-bottom:16px}
+  select{flex:1;min-width:0;height:var(--rowh);border:none;border-radius:var(--r-ctl);
+    padding:0 12px;background:var(--card-2);color:var(--label);
+    -webkit-appearance:none;appearance:none;outline:none}
+  .formgrid .field{height:var(--rowh)}
+
+  /* ---------- 底部工具 ---------- */
+  .tools{display:flex;gap:12px;margin:4px 0 8px}
+  .tools button{flex:1;height:44px;border-radius:var(--r-ctl);background:var(--fill);
+    color:var(--blue);font-size:15px;font-weight:500}
+  .tools button:active{opacity:.6}
+  .foot{text-align:center;font-size:12px;color:var(--label-3);margin:6px 0 4px}
+
+  /* ---------- 标签栏 ---------- */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;
+    justify-content:space-around;align-items:stretch;
+    padding:6px 0 calc(2px + env(safe-area-inset-bottom,0px));
+    background:var(--bar);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+    backdrop-filter:saturate(180%) blur(20px);
+    border-top:.5px solid var(--sep)}
+  .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:3px;height:48px;color:var(--label-3);
+    font-size:10px;letter-spacing:.01em;
+    transition:color .15s var(--ease-out), transform .12s var(--ease-out)}
+  .tabbar button.on{color:var(--blue)}
+  .tabbar button:active{transform:scale(.94)}
+  .tabbar svg{width:25px;height:25px;display:block}
+
+  /* ---------- 转场：切页是高频动作，不做过场动画 ---------- */
+  .view[hidden]{display:none}
+  @starting-style{
+    header{opacity:0;transform:translateY(6px)}
+    .card{opacity:0;transform:translateY(8px)}
+  }
+  header,.card{transition:opacity .26s var(--ease-out), transform .26s var(--ease-out)}
+  .card:nth-of-type(2){transition-delay:.04s}
+  .card:nth-of-type(3){transition-delay:.08s}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="hi" id="hi">11月3日 星期二</p>
+    <h1>九转工具蛊</h1>
+    <p class="sub" id="sub">第 10 周 · 2026–2027 第一学期</p>
+  </header>
+
+  <section class="view" id="view-acct">
+    <div class="card summary">
+      <div class="cell"><span class="k">今日支出</span><span class="v" id="sumDay">¥0</span></div>
+      <div class="cell"><span class="k">本月支出</span><span class="v" id="sumMon">¥0</span></div>
+    </div>
+
+    <div class="card form">
+      <div class="row">
+        <label class="field" style="flex:0 0 40%"><span class="pre">¥</span>
+          <input id="amt" type="number" inputmode="decimal" placeholder="金额" step="0.01" min="0"></label>
+        <label class="field"><input id="note" type="text" placeholder="备注（可选）"></label>
+      </div>
+      <div class="chips" id="cats"></div>
+      <button class="btn-fill" onclick="addAcct()">记一笔</button>
+    </div>
+
+    <div class="card">
+      <div class="card-head">明细</div>
+      <ul id="acctList"></ul>
+    </div>
+  </section>
+
+  <section class="view" id="view-todo" hidden>
+    <div class="card form">
+      <div class="row">
+        <label class="field"><input id="task" type="text" placeholder="要做点什么"></label>
+        <button class="btn-fill" style="width:84px" onclick="addTodo()">添加</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">进行中</div>
+      <ul id="todoList"></ul>
+    </div>
+    <div class="card">
+      <div class="card-head">已完成</div>
+      <ul id="doneList"></ul>
+    </div>
+  </section>
+
+  <section class="view" id="view-sched" hidden>
+    <div class="card">
+      <div class="seg">
+        <button class="seg-btn" onclick="stepWeek(-1)" aria-label="上一周">‹</button>
+        <div class="seg-label"><b id="wLabel">第 10 周</b><small id="wRange"></small></div>
+        <button class="seg-btn" onclick="stepWeek(1)" aria-label="下一周">›</button>
+        <button class="seg-now" onclick="goNow()">本周</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:6px 0 0">
+      <div class="gridwrap"><div class="grid" id="grid"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">这周的课</div>
+      <ul id="schedList"></ul>
+    </div>
+
+    <div class="card">
+      <details id="addBox">
+        <summary class="disclose">添加课程</summary>
+        <div class="formgrid">
+          <label class="field"><input id="cName" type="text" placeholder="课程名，如和声学"></label>
+        </div>
+        <div class="formgrid">
+          <label class="field"><input id="cTeacher" type="text" placeholder="教师"></label>
+          <label class="field"><input id="cPlace" type="text" placeholder="教室"></label>
+        </div>
+        <div class="formgrid">
+          <select id="cDow">
+            <option value="1">周一</option><option value="2">周二</option>
+            <option value="3">周三</option><option value="4">周四</option>
+            <option value="5">周五</option><option value="6">周六</option>
+            <option value="7">周日</option>
+          </select>
+          <select id="cS1"></select>
+          <select id="cS2"></select>
+        </div>
+        <div class="formgrid">
+          <label class="field"><input id="cWeeks" type="text" placeholder="周次，如 3-18 或 1,3,5"></label>
+        </div>
+        <div class="formgrid">
+          <button class="btn-fill" onclick="addCourse()">加入课表</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="tools">
+        <button onclick="exportData()">导出备份</button>
+        <button onclick="importData()">导入备份</button>
+      </div>
+      <p class="foot">数据只存在这台设备 · 建议每周导出一次</p>
+    </div>
+  </section>
+</div>
+
+<nav class="tabbar" id="tabbar">
+  <button data-tab="acct" class="on">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16"/><path d="M4 12h16"/>
+      <path d="M4 18.5h10"/></svg>记账</button>
+  <button data-tab="todo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/>
+      <path d="M8.2 12.2l2.6 2.6 5-5.2"/></svg>待办</button>
+  <button data-tab="sched">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5"
+      rx="3"/><path d="M3.5 9.5h17"/><path d="M8 3v3.5"/><path d="M16 3v3.5"/></svg>课表</button>
+</nav>
+
+<script>
+const CATS = ['餐饮','交通','购物','学习','音乐','娱乐','其他'];
+const DOW = {1:'周一',2:'周二',3:'周三',4:'周四',5:'周五',6:'周六',7:'周日'};
+let cat = '餐饮';
+let cur = 'acct';
+
+/* 本校节次时间表 */
+const SLOTS = [
+  ['08:00','08:45'],['08:50','09:35'],['09:50','10:35'],['10:40','11:25'],
+  ['11:30','12:15'],['14:00','14:45'],['14:50','15:35'],['15:50','16:35'],
+  ['16:40','17:25'],['17:30','18:15'],['19:00','19:45'],['19:50','20:35'],
+  ['20:45','21:30']
+];
+const HUES = { pub:'var(--c-pub)', major:'var(--c-major)', prac:'var(--c-prac)' };
+
+/* 本学期课表（按教务系统录入，可自行修改） */
+const SEED_VER = 'f2026-1';
+const SEED = [
+  {name:'钢琴小组课（一）_01', teacher:'陈思远', room:'博雅楼303', dow:1, s1:3, s2:5, weeks:'3-4'},
+  {name:'大学英语（雅思英语）（一）_05', teacher:'Sabrina Lin', room:'博雅楼217', dow:1, s1:6, s2:7, weeks:'3'},
+  {name:'大学英语（雅思英语）（一）_05', teacher:'Sabrina Lin', room:'公共教学楼301', dow:1, s1:6, s2:7, weeks:'4-17'},
+  {name:'中华民族共同体概论_02', teacher:'彭谦', room:'公共教学楼109', dow:1, s1:8, s2:10, weeks:'3-9'},
+  {name:'大学生思想文化素养_02', teacher:'宝艳园', room:'公共教学楼109', dow:1, s1:8, s2:9, weeks:'10-18'},
+
+  {name:'大学英语（雅思英语）（一）_05', teacher:'Sabrina Lin', room:'博文楼302', dow:2, s1:1, s2:2, weeks:'4-5'},
+  {name:'大学英语（雅思英语）（一）_05', teacher:'Sabrina Lin', room:'公共教学楼301', dow:2, s1:1, s2:2, weeks:'7-17'},
+  {name:'中国音乐史_01', teacher:'郭艺婧', room:'博雅楼404', dow:2, s1:6, s2:7, weeks:'3-18'},
+  {name:'人工智能素养_02', teacher:'杨国胜', room:'公共教学楼509', dow:2, s1:8, s2:10, weeks:'7-18'},
+
+  {name:'音乐基础理论与视唱练耳（一）_01', teacher:'南思羽', room:'博雅楼404', dow:3, s1:3, s2:4, weeks:'3-18'},
+  {name:'音乐基础理论与视唱练耳（一）_01', teacher:'南思羽', room:'博雅楼301', dow:3, s1:6, s2:7, weeks:'3-4'},
+  {name:'中华民族共同体概论_02', teacher:'彭谦', room:'公共教学楼109', dow:3, s1:8, s2:10, weeks:'3-7'},
+  {name:'大学生思想文化素养_02', teacher:'宝艳园', room:'公共教学楼109', dow:3, s1:8, s2:9, weeks:'10-18'},
+
+  {name:'人工智能素养_02', teacher:'杨国胜', room:'公共教学楼216', dow:4, s1:1, s2:2, weeks:'6-14'},
+  {name:'中国音乐史_01', teacher:'郭艺婧', room:'博雅楼404', dow:4, s1:3, s2:4, weeks:'3-4'},
+  {name:'音乐小组课（一）_01', teacher:'郭艺婧', room:'博雅楼301', dow:4, s1:6, s2:7, weeks:'3-5'},
+  {name:'音乐小组课（一）_01', teacher:'郭艺婧', room:'博雅楼301', dow:4, s1:8, s2:10, weeks:'3-18'},
+
+  {name:'钢琴小组课（一）_01', teacher:'陈思远', room:'博雅楼303', dow:5, s1:3, s2:5, weeks:'3-18'},
+  {name:'音乐小组课（一）_01', teacher:'郭艺婧', room:'博雅楼301', dow:5, s1:6, s2:7, weeks:'3-5'},
+  {name:'音乐小组课（一）_01', teacher:'郭艺婧', room:'博雅楼301', dow:5, s1:8, s2:10, weeks:'3-18'},
+  {name:'大学体育（一）_04', teacher:'李文华', room:'运动场游泳馆1楼', dow:5, s1:11, s2:12, weeks:'3-18'}
+];
+
+/* 存储键与原版保持一致，换皮不丢数据 */
+const store = {
+  get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d } catch(e){ return d } },
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)) }
+};
+let acct = store.get('acct', []);
+let todos = store.get('todos', []);
+let courses = store.get('courses', null);
+const seedVer = localStorage.getItem('seedVer');
+if (!Array.isArray(courses) || seedVer !== SEED_VER) {
+  courses = SEED.map((c, i) => ({ id: Date.now() + i, ...c }));
+  store.set('courses', courses);
+  localStorage.setItem('seedVer', SEED_VER);
+}
+let week = null;
+
+const today = () => new Date().toISOString().slice(0,10);
+const money = n => '¥' + (Math.round(n*100)/100).toLocaleString('zh-CN');
+/* 汇总数字：过十万改用「万」，否则窄屏只剩 ¥1,234,… */
+const moneyShort = n => n >= 100000
+  ? '¥' + (Math.round(n/1000)/10).toLocaleString('zh-CN') + '万'
+  : money(n);
+const nowHM = () => { const d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
+const todayDow = () => ((new Date().getDay() + 6) % 7) + 1;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function parseWeeks(str, maxW = 20){
+  const set = new Set();
+  String(str || '').split(/[,，、\s]+/).forEach(part => {
+    if (!part) return;
+    const m = part.match(/^(\d+)\s*[-~]\s*(\d+)$/);
+    if (m){ const a = +m[1], b = +m[2];
+      for (let i = Math.min(a,b); i <= Math.max(a,b); i++) set.add(i); }
+    else if (/^\d+$/.test(part)) set.add(+part);
+  });
+  return [...set].filter(w => w >= 1 && w <= maxW);
+}
+const TERM_START = new Date('2026-08-31T00:00:00');
+function currentWeek(){
+  const days = Math.floor((Date.now() - TERM_START.getTime()) / 86400000);
+  return Math.min(20, Math.max(1, Math.floor(days / 7) + 1));
+}
+function weekRange(n){
+  const s = new Date(TERM_START.getTime() + (n - 1) * 7 * 86400000);
+  const e = new Date(s.getTime() + 6 * 86400000);
+  const f = d => `${d.getMonth()+1}/${d.getDate()}`;
+  return `${f(s)} – ${f(e)}`;
+}
+
+/* 数字滚动：只动文字，不闪不跳 */
+function tween(el, to){
+  const from = parseFloat(el.dataset.v || 0);
+  el.dataset.v = to;
+  el.title = money(to);
+  if (from === to) { el.textContent = moneyShort(to); return; }
+  const t0 = performance.now(), dur = 340;
+  (function step(t){
+    const p = Math.min(1, (t - t0)/dur), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = moneyShort(from + (to - from) * e);
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+}
+/* 新加的那一条淡入，其余不动 */
+function animateIn(ul, newestId){
+  if (newestId == null) return;
+  const li = ul.querySelector(`li[data-id="${newestId}"]`);
+  if (!li) return;
+  li.animate([{ opacity:0, transform:'translateY(6px)' }, { opacity:1, transform:'none' }],
+    { duration:200, easing:'cubic-bezier(.23,1,.32,1)' });
+}
+
+/* ---------- 记账 ---------- */
+function initCats(){
+  document.getElementById('cats').innerHTML = CATS.map(c =>
+    `<button class="chip ${c===cat?'on':''}" onclick="pickCat('${c}')">${c}</button>`).join('');
+}
+function pickCat(c){
+  if (c === cat) return;
+  cat = c; initCats();
+  if (navigator.vibrate) navigator.vibrate(6);
+}
+function addAcct(){
+  const amt = parseFloat(document.getElementById('amt').value);
+  if (!(amt > 0)) { document.getElementById('amt').focus(); return; }
+  acct.unshift({ id: Date.now(), amount: +amt.toFixed(2), cat,
+                 note: document.getElementById('note').value.trim(), date: today() });
+  store.set('acct', acct);
+  document.getElementById('amt').value = '';
+  document.getElementById('note').value = '';
+  if (navigator.vibrate) navigator.vibrate(10);
+  renderAcct();
+}
+function delAcct(id, btn){
+  const li = btn.closest('li');
+  li.animate([{ opacity:1 }, { opacity:0, transform:'translateX(10px)' }],
+    { duration:160, easing:'cubic-bezier(.23,1,.32,1)', fill:'forwards' })
+    .onfinish = () => {
+      acct = acct.filter(a => a.id !== id);
+      store.set('acct', acct); renderAcct();
+    };
+}
+function renderAcct(){
+  const d0 = today(), m0 = d0.slice(0,7);
+  const daySum = acct.filter(a => a.date === d0).reduce((s,a) => s + a.amount, 0);
+  const monSum = acct.filter(a => a.date.startsWith(m0)).reduce((s,a) => s + a.amount, 0);
+  tween(document.getElementById('sumDay'), daySum);
+  tween(document.getElementById('sumMon'), monSum);
+  const el = document.getElementById('acctList');
+  if (!acct.length){ el.innerHTML = '<p class="empty">还没有记录</p>'; return; }
+  el.innerHTML = acct.slice(0, 100).map(a => `
+    <li data-id="${a.id}">
+      <div class="li-main">
+        <div class="li-t">${a.cat}${a.note ? ' · ' + esc(a.note) : ''}</div>
+        <div class="li-s">${a.date}</div>
+      </div>
+      <span class="amt">-${money(a.amount)}</span>
+      <button class="del" onclick="delAcct(${a.id}, this)" aria-label="删除">×</button>
+    </li>`).join('');
+  animateIn(el, acct[0] && acct[0].id);
+}
+
+/* ---------- 待办 ---------- */
+function addTodo(){
+  const v = document.getElementById('task').value.trim();
+  if (!v) return;
+  todos.unshift({ id: Date.now(), text: v, done: false, ts: Date.now() });
+  store.set('todos', todos);
+  document.getElementById('task').value = '';
+  if (navigator.vibrate) navigator.vibrate(10);
+  renderTodo();
+}
+function toggleTodo(id, el){
+  const t = todos.find(x => x.id === id); if (!t) return;
+  t.done = !t.done; store.set('todos', todos);
+  if (navigator.vibrate) navigator.vibrate(6);
+  if (el) el.animate([{ transform:'scale(1)' }, { transform:'scale(1.18)' }, { transform:'scale(1)' }],
+    { duration:220, easing:'cubic-bezier(.34,1.3,.64,1)' });
+  renderTodo();
+}
+function delTodo(id, btn){
+  const li = btn.closest('li');
+  li.animate([{ opacity:1 }, { opacity:0, transform:'translateX(10px)' }],
+    { duration:160, easing:'cubic-bezier(.23,1,.32,1)', fill:'forwards' })
+    .onfinish = () => {
+      todos = todos.filter(x => x.id !== id);
+      store.set('todos', todos); renderTodo();
+    };
+}
+function renderTodo(){
+  const open = todos.filter(t => !t.done), done = todos.filter(t => t.done);
+  const item = t => `
+    <li data-id="${t.id}" class="${t.done?'done':''} tap">
+      <button class="chk ${t.done?'on':''}" onclick="toggleTodo(${t.id}, this)"
+        aria-label="${t.done?'标记未完成':'标记完成'}">${t.done?'✓':''}</button>
+      <div class="li-main"><div class="li-t">${esc(t.text)}</div></div>
+      <button class="del" onclick="delTodo(${t.id}, this)" aria-label="删除">×</button>
+    </li>`;
+  const ul1 = document.getElementById('todoList'), ul2 = document.getElementById('doneList');
+  ul1.innerHTML = open.length ? open.map(item).join('') : '<p class="empty">没有进行中的事</p>';
+  ul2.innerHTML = done.length ? done.map(item).join('') : '<p class="empty">还没有完成的</p>';
+  animateIn(ul1, open[0] && open[0].id);
+  animateIn(ul2, done[0] && done[0].id);
+}
+
+/* ---------- 课表 ---------- */
+function initSlotSelects(){
+  const s1 = document.getElementById('cS1'), s2 = document.getElementById('cS2');
+  s1.innerHTML = SLOTS.map((t,i) => `<option value="${i+1}">第${i+1}节 ${t[0]}</option>`).join('');
+  s2.innerHTML = SLOTS.map((t,i) => `<option value="${i+1}">第${i+1}节 ${t[1]}</option>`).join('');
+  s1.value = '1'; s2.value = '2';
+  document.getElementById('cDow').value = todayDow();
+}
+function stepWeek(d){ week = Math.min(20, Math.max(1, week + d)); renderWeek(); renderGrid(); }
+function goNow(){ week = currentWeek(); renderWeek(); renderGrid(); }
+function renderWeek(){
+  document.getElementById('wLabel').textContent = `第 ${week} 周`;
+  document.getElementById('wRange').textContent = weekRange(week);
+}
+function colorOf(c){
+  const n = c.name || '';
+  if (/体育|实践|实验/.test(n)) return HUES.prac;
+  if (/共同体|思想文化|人工智能|英语/.test(n)) return HUES.pub;
+  return HUES.major;
+}
+function renderGrid(){
+  const grid = document.getElementById('grid');
+  const td = todayDow(), hm = nowHM();
+  const nowSlot = SLOTS.findIndex(([a,b]) => hm >= a && hm < b) + 1;
+  const ROW = 44, HDR = 30;
+
+  let html = '<div class="tcol"><div class="hdr">节次</div>';
+  SLOTS.forEach((t, i) => {
+    html += `<div class="slotcell"><b>${i+1}</b><i>${t[0]}</i></div>`;
+  });
+  html += '</div>';
+
+  for (let d = 1; d <= 6; d++){
+    html += `<div class="dcol"><div class="dhead ${d===td?'today':''}">${DOW[d]}</div>`;
+    for (let s = 1; s <= SLOTS.length; s++){
+      html += `<div class="dh ${(d===td && s===nowSlot) ? 'now' : ''}"></div>`;
+    }
+    const list = courses.filter(c => c.dow === d && parseWeeks(c.weeks).includes(week));
+    const items = list.map(c => ({...c, s1:+c.s1, s2:+c.s2}))
+                      .sort((a,b) => a.s1 - b.s1 || b.s2 - a.s2);
+    const lanes = [];
+    items.forEach(it => {
+      let placed = false;
+      for (const lane of lanes){
+        if (lane.every(o => it.s1 > o.s2 || it.s2 < o.s1)){
+          lane.push(it); it._lane = lanes.indexOf(lane); placed = true; break;
+        }
+      }
+      if (!placed){ it._lane = lanes.length; lanes.push([it]); }
+    });
+    const laneCount = Math.max(1, lanes.length);
+    items.forEach(it => {
+      const top = HDR + (it.s1 - 1) * ROW + 2;
+      const height = (it.s2 - it.s1 + 1) * ROW - 4;
+      const w = 100 / laneCount;
+      html += `<div class="cblock" style="top:${top}px;height:${height}px;
+        left:calc(${it._lane * w}% + 1px);width:calc(${w}% - 3px);
+        --c:${colorOf(it)}"
+        title="${esc(it.name)}｜${esc(it.teacher||'')}｜${esc(it.room||'')}｜${esc(it.weeks)}周">
+        <div class="bn">${esc(it.name)}</div>
+        <div class="bt">${esc(it.teacher || '')}</div>
+        <div class="br">${esc(it.room || '')}</div>
+      </div>`;
+    });
+    if (d === td && nowSlot > 0){
+      const [na, nb] = SLOTS[nowSlot - 1];
+      const toMin = t => +t.slice(0,2) * 60 + +t.slice(3,5);
+      const frac = Math.min(1, Math.max(0, (toMin(hm) - toMin(na)) / (toMin(nb) - toMin(na))));
+      html += `<div class="nowline" style="top:${HDR + (nowSlot - 1) * ROW + frac * ROW}px"></div>`;
+    }
+    html += '</div>';
+  }
+  grid.innerHTML = html;
+  renderSchedList();
+}
+function renderSchedList(){
+  const list = courses.filter(c => parseWeeks(c.weeks).includes(week))
+    .sort((a,b) => a.dow - b.dow || a.s1 - b.s1);
+  const el = document.getElementById('schedList');
+  if (!list.length){ el.innerHTML = '<p class="empty">这周没课</p>'; return; }
+  el.innerHTML = list.map(c => `
+    <li data-id="${c.id}">
+      <div class="li-main">
+        <div class="li-t">${esc(c.name)}</div>
+        <div class="li-s">${DOW[c.dow]} 第${c.s1}-${c.s2}节 · ${esc(c.room||'')}${
+          c.teacher ? ' · ' + esc(c.teacher) : ''}</div>
+      </div>
+      <span class="tag">${esc(c.weeks)}周</span>
+      <button class="del" onclick="delCourse(${c.id}, this)" aria-label="删除">×</button>
+    </li>`).join('');
+}
+function addCourse(){
+  const name = document.getElementById('cName').value.trim();
+  if (!name) { document.getElementById('cName').focus(); return; }
+  const s1 = +document.getElementById('cS1').value;
+  const s2 = +document.getElementById('cS2').value;
+  if (s2 < s1) { alert('结束节次要大于等于开始节次'); return; }
+  const weeks = document.getElementById('cWeeks').value.trim() || '1-18';
+  if (!parseWeeks(weeks).length) { alert('周次填法：3-18 或 1,3,5'); return; }
+  courses.push({ id: Date.now(), name,
+    teacher: document.getElementById('cTeacher').value.trim(),
+    room: document.getElementById('cPlace').value.trim(),
+    dow: +document.getElementById('cDow').value, s1, s2, weeks });
+  store.set('courses', courses);
+  ['cName','cTeacher','cPlace','cWeeks'].forEach(id => document.getElementById(id).value = '');
+  week = parseWeeks(weeks)[0] || week;
+  renderWeek(); renderGrid();
+  if (navigator.vibrate) navigator.vibrate(10);
+}
+function delCourse(id, btn){
+  const li = btn.closest('li');
+  li.animate([{ opacity:1 }, { opacity:0, transform:'translateX(10px)' }],
+    { duration:160, easing:'cubic-bezier(.23,1,.32,1)', fill:'forwards' })
+    .onfinish = () => {
+      courses = courses.filter(c => c.id !== id);
+      store.set('courses', courses); renderGrid();
+    };
+}
+
+/* ---------- 备份 ---------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify({acct, todos, courses, at: Date.now()}, null, 1)],
+    {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'backup-' + today() + '.json';
+  a.click();
+}
+function importData(){
+  const i = document.createElement('input'); i.type = 'file'; i.accept = '.json';
+  i.onchange = () => {
+    const f = i.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const d = JSON.parse(r.result);
+        if (Array.isArray(d.acct)) acct = d.acct;
+        if (Array.isArray(d.todos)) todos = d.todos;
+        if (Array.isArray(d.courses)) courses = d.courses;
+        store.set('acct', acct); store.set('todos', todos); store.set('courses', courses);
+        renderAcct(); renderTodo(); renderGrid(); alert('导入成功');
+      } catch(e){ alert('文件格式不对'); }
+    };
+    r.readAsText(f);
+  };
+  i.click();
+}
+
+/* ---------- 标签栏：切页不做动画（高频动作，动画只会显得慢） ---------- */
+function switchTab(next){
+  if (next === cur) return;
+  document.getElementById('view-' + cur).hidden = true;
+  document.getElementById('view-' + next).hidden = false;
+  document.querySelectorAll('#tabbar button').forEach(b =>
+    b.classList.toggle('on', b.dataset.tab === next));
+  cur = next;
+  window.scrollTo(0, 0);
+  if (next === 'acct') renderAcct();
+  else if (next === 'todo') renderTodo();
+  else { renderWeek(); renderGrid(); }
+  if (navigator.vibrate) navigator.vibrate(6);
+}
+document.querySelectorAll('#tabbar button').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+
+document.getElementById('amt').addEventListener('keydown', e => { if (e.key === 'Enter') addAcct() });
+document.getElementById('task').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo() });
+document.getElementById('cName').addEventListener('keydown', e => { if (e.key === 'Enter') addCourse() });
+
+/* ---------- 头部日期 ---------- */
+week = currentWeek();
+(function meta(){
+  const d = new Date();
+  document.getElementById('hi').textContent =
+    `${d.getMonth()+1}月${d.getDate()}日 星期${'日一二三四五六'[d.getDay()]}`;
+  document.getElementById('sub').textContent =
+    `第 ${currentWeek()} 周 · 2026–2027 第一学期`;
+})();
+
+initCats(); renderAcct(); renderTodo(); initSlotSelects(); renderWeek(); renderGrid();
+</script>
+</body>
+</html>
